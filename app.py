@@ -753,8 +753,9 @@ def stop_websocket():
 # =============================================================================
 # ANALYTICS FUNCTIONS
 # =============================================================================
-def compute_analytics(symbols: list, timeframe: str, window: int) -> dict:
-    """Compute all analytics for the dashboard."""
+def compute_analytics(symbols: list, timeframe: str, window: int, 
+                       filter_start: datetime = None, filter_end: datetime = None) -> dict:
+    """Compute all analytics for the dashboard with optional date filtering."""
     store = _global_state.store
     results = {
         "prices": {},
@@ -764,14 +765,26 @@ def compute_analytics(symbols: list, timeframe: str, window: int) -> dict:
         "zscore": None,
         "adf": None,
         "correlation": None,
+        "filtered": filter_start is not None,  # Flag to indicate if data is filtered
     }
     
     # Get price data for each symbol
     for symbol in symbols:
         prices = store.get_prices(symbol.upper(), timeframe)
         if not prices.empty:
-            results["prices"][symbol.upper()] = prices
-            results["statistics"][symbol.upper()] = calculate_statistics(prices, symbol.upper())
+            # Apply date filter if specified
+            if filter_start is not None and filter_end is not None:
+                # Ensure index is datetime-like for filtering
+                if hasattr(prices.index, 'tz_localize'):
+                    try:
+                        mask = (prices.index >= pd.Timestamp(filter_start)) & (prices.index <= pd.Timestamp(filter_end))
+                        prices = prices[mask]
+                    except:
+                        pass  # If filtering fails, use all data
+            
+            if not prices.empty:
+                results["prices"][symbol.upper()] = prices
+                results["statistics"][symbol.upper()] = calculate_statistics(prices, symbol.upper())
     
     # Need at least 2 symbols for pair analytics
     if len(results["prices"]) >= 2:
@@ -1503,6 +1516,73 @@ with st.sidebar:
     
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
     
+    # Date/Time Filter Section
+    st.markdown("""
+    <div class="sidebar-section">
+        <div class="sidebar-title">📅 Date Filter</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    date_filter_mode = st.radio(
+        "Filter Mode",
+        ["All Time", "Today", "Last Hour", "Custom Range"],
+        index=0,
+        label_visibility="collapsed",
+        horizontal=True
+    )
+    
+    # Calculate date range based on selection
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    if date_filter_mode == "All Time":
+        filter_start = None
+        filter_end = None
+    elif date_filter_mode == "Today":
+        filter_start = today_start
+        filter_end = now
+    elif date_filter_mode == "Last Hour":
+        filter_start = now - timedelta(hours=1)
+        filter_end = now
+    else:  # Custom Range
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+        
+        col_from, col_to = st.columns(2)
+        with col_from:
+            st.markdown("<div style='font-size: 11px; color: #64748b; margin-bottom: 4px;'>From</div>", unsafe_allow_html=True)
+            from_date = st.date_input("From Date", value=today_start.date(), label_visibility="collapsed", key="from_date")
+            from_time = st.time_input("From Time", value=today_start.time(), label_visibility="collapsed", key="from_time")
+        with col_to:
+            st.markdown("<div style='font-size: 11px; color: #64748b; margin-bottom: 4px;'>To</div>", unsafe_allow_html=True)
+            to_date = st.date_input("To Date", value=now.date(), label_visibility="collapsed", key="to_date")
+            to_time = st.time_input("To Time", value=now.time(), label_visibility="collapsed", key="to_time")
+        
+        filter_start = datetime.combine(from_date, from_time)
+        filter_end = datetime.combine(to_date, to_time)
+    
+    # Store filter in session state for use in analytics
+    st.session_state["date_filter_start"] = filter_start
+    st.session_state["date_filter_end"] = filter_end
+    
+    # Display active filter info
+    if filter_start and filter_end:
+        st.markdown(f"""
+        <div style="background: rgba(6, 182, 212, 0.1); border-radius: 6px; padding: 8px; margin-top: 8px; text-align: center;">
+            <div style="font-size: 10px; color: #64748b;">ACTIVE FILTER</div>
+            <div style="font-size: 11px; color: #06b6d4; font-family: 'JetBrains Mono', monospace;">
+                {filter_start.strftime('%H:%M:%S')} → {filter_end.strftime('%H:%M:%S')}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background: rgba(34, 197, 94, 0.1); border-radius: 6px; padding: 8px; margin-top: 8px; text-align: center;">
+            <div style="font-size: 11px; color: #22c55e;">📊 Showing All Data</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+    
     # Connection Controls
     st.markdown("""
     <div class="sidebar-section">
@@ -1535,7 +1615,11 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    analytics = compute_analytics(selected_symbols, selected_timeframe, rolling_window)
+    analytics = compute_analytics(
+        selected_symbols, selected_timeframe, rolling_window,
+        filter_start=st.session_state.get("date_filter_start"),
+        filter_end=st.session_state.get("date_filter_end")
+    )
     
     for symbol, stats in analytics.get("statistics", {}).items():
         if stats:
@@ -1638,6 +1722,56 @@ with st.sidebar:
                     "text/csv",
                     key=f"download_{symbol}"
                 )
+    
+    st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+    
+    # Quick Guide Section
+    with st.expander("📖 Quick Guide", expanded=False):
+        st.markdown("""
+        <div style="font-size: 12px; line-height: 1.6; color: #94a3b8;">
+        
+        **🎯 What is this?**  
+        A real-time statistical arbitrage dashboard analyzing BTC/ETH price relationships.
+        
+        ---
+        
+        **📊 KPI Cards (Top Row)**  
+        • **Ticks Received** - Live trade count  
+        • **Bars Processed** - OHLCV bars created  
+        • **Z-Score** - Current mean-reversion signal  
+        • **Alerts** - Threshold breach count  
+        
+        ---
+        
+        **📈 Main Charts**  
+        • **Price Chart** - Dual-axis BTC/ETH prices  
+        • **Spread** - Price difference (Y - β×X)  
+        • **Z-Score with Signals** - Entry/Exit markers  
+        
+        ---
+        
+        **🔬 Advanced Analytics**  
+        • **Z-Score Histogram** - Distribution & tail risk  
+        • **Rolling Volatility** - Regime detection  
+        • **Rolling β** - Hedge ratio stability  
+        • **Signal Efficacy** - Mean-reversion validation  
+        
+        ---
+        
+        **📌 Trading Logic**  
+        • **BUY** when Z < -2 (spread undervalued)  
+        • **SELL** when Z > +2 (spread overvalued)  
+        • **EXIT** when Z crosses back to 0  
+        
+        ---
+        
+        **⚡ Quick Start**  
+        1. Click **Start** to connect live data  
+        2. Or click **Load Demo** for sample data  
+        3. Adjust **Rolling Window** to tune sensitivity  
+        
+        </div>
+        """, unsafe_allow_html=True)
 
 # =============================================================================
 # MAIN CONTENT - Premium Glassmorphism Layout

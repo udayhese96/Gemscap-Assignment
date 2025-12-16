@@ -10,8 +10,6 @@ SYMBOLS: List[str] = ["btcusdt", "ethusdt"]
 SYMBOL_DISPLAY: Dict[str, str] = {
     "btcusdt": "BTCUSDT",
     "ethusdt": "ETHUSDT",
-    "solusdt": "SOLUSDT",
-    "bnbusdt": "BNBUSDT",
 }
 
 # =============================================================================
