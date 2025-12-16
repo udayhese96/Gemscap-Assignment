@@ -84,16 +84,3 @@ Gemscap/
 ```
 
 ---
-
-## 🎉 What the Interviewer Will See
-
-* **Clean, modern UI** - glass-morphism, dark theme, responsive layout
-* **Robust real-time pipeline** - async WebSocket with reconnection, thread-safe state
-* **Deep quantitative analytics** - five advanced charts each with a clear business insight
-* **Professional documentation** - concise overview, architecture diagram, chart table
-
-Feel free to tweak the `REFRESH_RATE_MS` in `config.py` or add more symbols/timeframes to showcase extensibility.
-
----
-
-*Happy hacking!*
