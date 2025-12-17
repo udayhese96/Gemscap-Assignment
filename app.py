@@ -1626,8 +1626,20 @@ with st.sidebar:
         # Stop any active connection first
         if _global_state.is_running:
             stop_websocket()
-        # Reset all data
-        _global_state.reset_all()
+        # Reset all data - use try/except for backwards compatibility
+        try:
+            if hasattr(_global_state, 'reset_all'):
+                _global_state.reset_all()
+            else:
+                # Fallback: manually clear components
+                _global_state.store.clear()
+                _global_state.alert_engine.clear_history()
+                _global_state.resamplers = {}
+                _global_state.tick_count = 0
+                _global_state.last_update = None
+        except Exception:
+            # If all else fails, clear the cached resource to force fresh state
+            get_global_state.clear()
         # Reset session state
         st.session_state.demo_mode = False
         st.session_state.demo_data_loaded = False
