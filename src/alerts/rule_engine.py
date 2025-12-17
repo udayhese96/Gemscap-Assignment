@@ -310,6 +310,12 @@ class AlertEngine:
         """Clear alert history."""
         with self._lock:
             self._history.clear()
+    
+    def clear_all(self) -> None:
+        """Clear all alert state including history and cooldown tracking."""
+        with self._lock:
+            self._history.clear()
+            self._last_triggered.clear()
             
     @property
     def alert_count(self) -> int:

@@ -627,6 +627,19 @@ class GlobalState:
             bar = self.resamplers[timeframe].add_tick(tick)
             if bar:
                 self.store.add_bar(bar, timeframe)
+    
+    def reset_all(self):
+        """Reset all data and state - clears cache and starts fresh."""
+        with self._data_lock:
+            # Clear the memory store
+            self.store.clear()
+            # Reset alert engine
+            self.alert_engine.clear_all()
+            # Reset resamplers
+            self.resamplers = {}
+            # Reset counters
+            self.tick_count = 0
+            self.last_update = None
 
 @st.cache_resource
 def get_global_state():
@@ -1604,6 +1617,25 @@ with st.sidebar:
     
     if st.button("📂 Load Demo Data", use_container_width=True, key="demo_btn"):
         load_demo_data(selected_timeframe)
+        st.rerun()
+    
+    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+    
+    # Clear Cache / Reset Dashboard button
+    if st.button("🗑️ Clear Cache / Reset", use_container_width=True, key="reset_btn", type="secondary"):
+        # Stop any active connection first
+        if _global_state.is_running:
+            stop_websocket()
+        # Reset all data
+        _global_state.reset_all()
+        # Reset session state
+        st.session_state.demo_mode = False
+        st.session_state.demo_data_loaded = False
+        if "date_filter_start" in st.session_state:
+            del st.session_state["date_filter_start"]
+        if "date_filter_end" in st.session_state:
+            del st.session_state["date_filter_end"]
+        st.toast("✅ Dashboard reset successfully!", icon="🗑️")
         st.rerun()
     
     st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
