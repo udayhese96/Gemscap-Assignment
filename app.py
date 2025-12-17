@@ -890,12 +890,21 @@ def create_price_chart(prices: dict, height: int = 300) -> go.Figure:
         uirevision="price_chart",  # Prevents axis reset on data update
     )
     
+    # Calculate fixed axis ranges with padding to prevent rescaling
     if len(symbols) >= 1:
+        series1 = prices[symbols[0]]
+        y1_min = series1.min() * 0.998  # 0.2% padding
+        y1_max = series1.max() * 1.002
         fig.update_yaxes(title_text=symbols[0], secondary_y=False, gridcolor="#1e293b", 
-                        title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"))
+                        title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"),
+                        range=[y1_min, y1_max])
     if len(symbols) >= 2:
+        series2 = prices[symbols[1]]
+        y2_min = series2.min() * 0.998
+        y2_max = series2.max() * 1.002
         fig.update_yaxes(title_text=symbols[1], secondary_y=True, gridcolor="#1e293b",
-                        title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"))
+                        title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"),
+                        range=[y2_min, y2_max])
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
     
@@ -942,8 +951,15 @@ def create_spread_chart(spread: pd.Series, height: int = 250) -> go.Figure:
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
+    
+    # Fixed Y-axis range with padding to prevent rescaling
+    spread_min = spread.min()
+    spread_max = spread.max()
+    spread_range = spread_max - spread_min
+    y_padding = spread_range * 0.1 if spread_range > 0 else 1
     fig.update_yaxes(title_text="Spread", gridcolor="#1e293b", 
-                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"))
+                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"),
+                    range=[spread_min - y_padding, spread_max + y_padding])
     
     return fig
 
@@ -991,8 +1007,13 @@ def create_zscore_chart(zscore: pd.Series, height: int = 250) -> go.Figure:
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
+    
+    # Fixed Y-axis range to include thresholds and data
+    z_min = min(zscore.min(), ZSCORE_LOWER_THRESHOLD - 1)
+    z_max = max(zscore.max(), ZSCORE_UPPER_THRESHOLD + 1)
     fig.update_yaxes(title_text="Z-Score", gridcolor="#1e293b",
-                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"))
+                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"),
+                    range=[z_min, z_max])
     
     return fig
 
@@ -1160,8 +1181,13 @@ def create_rolling_volatility_chart(spread: pd.Series, window: int = 20, height:
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
+    
+    # Fixed Y-axis range with padding to prevent rescaling
+    vol_min = 0  # Volatility can't be negative
+    vol_max = max(rolling_vol.max(), high_vol_threshold) * 1.2
     fig.update_yaxes(title_text="Volatility (σ)", gridcolor="#1e293b",
-                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"))
+                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"),
+                    range=[vol_min, vol_max])
     
     return fig
 
@@ -1252,8 +1278,13 @@ def create_rolling_hedge_ratio_chart(y_prices: pd.Series, x_prices: pd.Series,
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
+    
+    # Fixed Y-axis range with padding to prevent rescaling
+    beta_min = min(rolling_beta) - std_beta
+    beta_max = max(rolling_beta) + std_beta
     fig.update_yaxes(title_text="Hedge Ratio (β)", gridcolor="#1e293b",
-                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"))
+                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"),
+                    range=[beta_min, beta_max])
     
     return fig
 
@@ -1460,11 +1491,16 @@ def create_zscore_with_signals_chart(zscore: pd.Series, height: int = 280) -> go
                    font=dict(size=10, color="#e2e8f0")),
         hovermode="x unified",
         font=dict(color="#e2e8f0"),
+        uirevision="zscore_signals_chart",  # Prevents axis reset on data update
     )
     
+    # Fixed Y-axis range for Z-score to prevent rescaling
+    z_min = min(zscore_clean.min(), -4)
+    z_max = max(zscore_clean.max(), 4)
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
     fig.update_yaxes(title_text="Z-Score", gridcolor="#1e293b",
-                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"))
+                    title_font=dict(color="#e2e8f0"), tickfont=dict(color="#94a3b8"),
+                    range=[z_min, z_max])
     
     return fig
 
@@ -1552,8 +1588,8 @@ with st.sidebar:
         horizontal=True
     )
     
-    # Calculate date range based on selection
-    now = datetime.now()
+    # Calculate date range based on selection (use UTC to match bar timestamps)
+    now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
     if date_filter_mode == "All Time":
