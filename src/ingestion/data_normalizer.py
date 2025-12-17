@@ -2,8 +2,11 @@
 Data normalizer for Binance WebSocket tick data
 """
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
+
+# IST timezone (UTC+5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 
 @dataclass
@@ -60,7 +63,9 @@ def normalize_tick(raw_message: Dict[str, Any]) -> Optional[Tick]:
         if trade_time_ms is None:
             return None
             
-        timestamp = datetime.utcfromtimestamp(trade_time_ms / 1000.0)
+        # Convert to IST (UTC+5:30)
+        utc_timestamp = datetime.fromtimestamp(trade_time_ms / 1000.0, tz=timezone.utc)
+        timestamp = utc_timestamp.astimezone(IST).replace(tzinfo=None)  # naive IST datetime
         
         # Parse other fields
         symbol = raw_message.get("s", "").upper()
@@ -101,8 +106,8 @@ def normalize_from_ndjson(record: Dict[str, Any]) -> Optional[Tick]:
     """
     try:
         timestamp = datetime.fromisoformat(record["ts"].replace("Z", "+00:00"))
-        # Convert to naive UTC datetime for consistency
-        timestamp = timestamp.replace(tzinfo=None)
+        # Convert to IST and make naive
+        timestamp = timestamp.astimezone(IST).replace(tzinfo=None)
         
         return Tick(
             symbol=record["symbol"].upper(),
