@@ -887,6 +887,7 @@ def create_price_chart(prices: dict, height: int = 300) -> go.Figure:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0")),
         hovermode="x unified",
         font=dict(color="#e2e8f0"),
+        uirevision="price_chart",  # Prevents axis reset on data update
     )
     
     if len(symbols) >= 1:
@@ -937,6 +938,7 @@ def create_spread_chart(spread: pd.Series, height: int = 250) -> go.Figure:
         showlegend=False,
         hovermode="x unified",
         font=dict(color="#e2e8f0"),
+        uirevision="spread_chart",  # Prevents axis reset on data update
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
@@ -985,6 +987,7 @@ def create_zscore_chart(zscore: pd.Series, height: int = 250) -> go.Figure:
         showlegend=False,
         hovermode="x unified",
         font=dict(color="#e2e8f0"),
+        uirevision="zscore_chart",  # Prevents axis reset on data update
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
@@ -1021,6 +1024,7 @@ def create_correlation_chart(correlation: pd.Series, height: int = 200) -> go.Fi
         showlegend=False,
         hovermode="x unified",
         font=dict(color="#e2e8f0"),
+        uirevision="correlation_chart",  # Prevents axis reset on data update
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
@@ -1081,6 +1085,7 @@ def create_zscore_histogram(zscore: pd.Series, height: int = 250) -> go.Figure:
         margin=dict(l=60, r=20, t=40, b=40),
         showlegend=False,
         font=dict(color="#e2e8f0"),
+        uirevision="zscore_histogram",  # Prevents axis reset on data update
         annotations=[
             dict(
                 x=0.95, y=0.95, xref="paper", yref="paper",
@@ -1151,6 +1156,7 @@ def create_rolling_volatility_chart(spread: pd.Series, window: int = 20, height:
         showlegend=False,
         hovermode="x unified",
         font=dict(color="#e2e8f0"),
+        uirevision="rolling_volatility",  # Prevents axis reset on data update
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
@@ -1242,6 +1248,7 @@ def create_rolling_hedge_ratio_chart(y_prices: pd.Series, x_prices: pd.Series,
         showlegend=False,
         hovermode="x unified",
         font=dict(color="#e2e8f0"),
+        uirevision="rolling_hedge_ratio",  # Prevents axis reset on data update
     )
     
     fig.update_xaxes(gridcolor="#1e293b", tickfont=dict(color="#94a3b8"))
@@ -1341,6 +1348,7 @@ def create_signal_efficacy_chart(zscore: pd.Series, spread: pd.Series,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0")),
         hovermode="closest",
         font=dict(color="#e2e8f0"),
+        uirevision="signal_efficacy",  # Prevents axis reset on data update
     )
     
     fig.update_xaxes(title_text="Z-Score at t", gridcolor="#1e293b",
@@ -1539,7 +1547,7 @@ with st.sidebar:
     date_filter_mode = st.radio(
         "Filter Mode",
         ["All Time", "Today", "Last Hour", "Custom Range"],
-        index=0,
+        index=2,  # Default to "Last Hour" for stable chart display
         label_visibility="collapsed",
         horizontal=True
     )
